@@ -1,6 +1,17 @@
 import streamlit as st
 import pandas as pd
+import altair as alt
+import plotly.express as px
 import matplotlib.pyplot as plt
+
+# Page configuration
+st.set_page_config(
+    page_title="Dashboard FlavioCesar",
+    page_icon="🐈",
+    layout="wide",
+    initial_sidebar_state="expanded")
+
+alt.themes.enable("dark")
 
 # Cargar datos
 file_path = 'ventas.xlsx'
@@ -19,24 +30,29 @@ st.markdown('### Resumen de ventas y rendimiento')
 
 # Filtros en la barra lateral con expanders
 with st.sidebar:
+    st.title('🕒 Dashboard NG')
     with st.expander("Filtro por Fechas"):
         start_date = st.date_input('Fecha de inicio', data['Date'].min())
         end_date = st.date_input('Fecha de fin', data['Date'].max())
     with st.expander("Filtro por País"):
-        country_filter = st.multiselect('Selecciona País', data['Pais'].unique(), default=data['Pais'].unique())
+        country_filter = st.selectbox('Selecciona País', ['Todos'] + list(data['Pais'].unique()))
     with st.expander("Filtro por Cliente"):
-        customer_filter = st.multiselect('Selecciona Cliente', data['IdCliente'].unique(), default=data['IdCliente'].unique())
+        customer_filter = st.selectbox('Selecciona Cliente', ['Todos'] + list(data['IdCliente'].unique()))
     with st.expander("Filtro por Producto"):
-        product_filter = st.multiselect('Selecciona Producto', data['Descripcion'].unique(), default=data['Descripcion'].unique())
+        product_filter = st.selectbox('Selecciona Producto', ['Todos'] + list(data['Descripcion'].unique()))
 
 # Aplicar filtros
 filtered_data = data[
     (data['Date'] >= pd.to_datetime(start_date)) &
-    (data['Date'] <= pd.to_datetime(end_date)) &
-    (data['Pais'].isin(country_filter)) &
-    (data['IdCliente'].isin(customer_filter)) &
-    (data['Descripcion'].isin(product_filter))
+    (data['Date'] <= pd.to_datetime(end_date))
 ]
+
+if country_filter != 'Todos':
+    filtered_data = filtered_data[filtered_data['Pais'] == country_filter]
+if customer_filter != 'Todos':
+    filtered_data = filtered_data[filtered_data['IdCliente'] == customer_filter]
+if product_filter != 'Todos':
+    filtered_data = filtered_data[filtered_data['Descripcion'] == product_filter]
 
 # KPIs principales
 total_sales = filtered_data['Total'].sum()
