@@ -7,10 +7,29 @@ import requests
 
 # Page configuration
 st.set_page_config(
-    page_title="Dashboard FlavioCesar",
+    page_title="Dashboard Flavio Cesar",
     page_icon="🐈",
     layout="wide",
     initial_sidebar_state="expanded")
+
+# Función para cargar una animación Lottie desde una URL
+def load_lottieurl(url: str):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
+
+# Intenta cargar la animación desde la URL
+#lottie_url = "https://lottie.host/4e613a73-5520-425b-90cf-fdfe14e20b4a/wZAoFBUeWd.json"
+#lottie_json = load_lottieurl(lottie_url)
+
+# Si falla, intenta cargar desde un archivo local
+#if lottie_json is None:
+    #try:
+        #with open('Animation - 1719585227027.json', 'r') as f:
+            #lottie_json = f.read()
+    #except FileNotFoundError:
+        #st.error("No se pudo cargar la animación Lottie. Verifica el enlace o el archivo local.")
 
 # Cargar datos
 file_path = 'ventas.xlsx'
@@ -19,24 +38,18 @@ data = pd.read_excel(file_path)
 # Transformar datos
 data['Date'] = pd.to_datetime(data['Date'])
 data['YearMonth'] = data['Date'].dt.to_period('M').astype(str)
+data['Quarter'] = data['Date'].dt.to_period('Q')
 
 # Eliminar valores nulos en las columnas usadas para los filtros
 data.dropna(subset=['Date', 'Pais', 'IdCliente', 'Descripcion'], inplace=True)
 
 # Título del Dashboard
-st.title('🌟 Dashboard de Ventas 🌟')
+st.title('🌟 Dashboard de Ventas de Flavio Cesar 🌟')
 st.markdown('### Resumen de ventas y rendimiento 📊')
 
-# Animación Lottie
-def load_lottieurl(url: str):
-    r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
-
-lottie_url = "https://assets4.lottiefiles.com/packages/lf20_dHJiUx.json"
-lottie_json = load_lottieurl(lottie_url)
-st_lottie(lottie_json, speed=1, width=700, height=300, key="dashboard")
+# Mostrar la animación Lottie si se cargó correctamente
+#if lottie_json:
+ #   st_lottie(lottie_json, speed=1, width=700, height=300, key="dashboard")
 
 # Filtros en la barra lateral con expanders
 with st.sidebar:
@@ -68,7 +81,7 @@ if product_filter != 'Todos':
 total_sales = filtered_data['Total'].sum()
 total_quantity = filtered_data['Cantidad'].sum()
 num_customers = filtered_data['IdCliente'].nunique()
-quarterly_sales = filtered_data.resample('Q', on='Date')['Total'].sum()
+quarterly_sales = filtered_data.groupby('Quarter')['Total'].sum()
 
 # Primera fila de KPIs
 st.markdown("## 🔑 KPIs Principales")
@@ -117,42 +130,38 @@ with col3:
 
 with col4:
     st.subheader('📊 Ventas Trimestrales')
-    fig = go.Figure(data=[go.Scatter(x=quarterly_sales.index, y=quarterly_sales.values, mode='lines+markers', line=dict(color='firebrick'))])
-    fig.update_layout(title='Ventas Trimestrales', xaxis_title='Fecha', yaxis_title='Ventas Totales')
+    fig = go.Figure(data=[go.Scatter(x=quarterly_sales.index.to_timestamp(), y=quarterly_sales.values, mode='lines+markers', line=dict(color='firebrick'))])
+    fig.update_layout(title='Ventas Trimestrales',
+                      xaxis_title='Trimestre',
+                      yaxis_title='Ventas Totales',
+                      template='plotly_dark')
     st.plotly_chart(fig, use_container_width=True)
 
-# Cuarta fila de gráficos
+# Fila adicional de gráficos
+st.markdown("## 🔍 Análisis Detallado")
 col5, col6 = st.columns(2)
 
 with col5:
-    st.subheader('🛍️ Ventas por Producto y País')
-    product_country_sales = filtered_data.groupby(['Descripcion', 'Pais'])['Total'].sum().unstack().fillna(0)
-    fig = px.bar(product_country_sales, title="Ventas por Producto y País", labels={'value':'Ventas Totales'}, barmode='group')
+    st.subheader('📈 Tendencia de Ventas')
+    trend_sales = filtered_data.resample('M', on='Date')['Total'].sum().reset_index()
+    fig = px.line(trend_sales, x='Date', y='Total', title="Tendencia de Ventas Mensuales",
+                  labels={'Date':'Fecha', 'Total':'Ventas Totales'}, markers=True)
+    fig.update_traces(line=dict(color='magenta', width=4), marker=dict(size=10))
     st.plotly_chart(fig, use_container_width=True)
 
 with col6:
-    st.subheader('📋 Datos Filtrados')
-    st.dataframe(filtered_data)
+    st.subheader('🧮 Distribución de Ventas')
+    fig = px.histogram(filtered_data, x='Total', nbins=30, title="Distribución de Ventas",
+                       labels={'Total':'Ventas'}, color='Total')
+    fig.update_layout(bargap=0.2)
+    st.plotly_chart(fig, use_container_width=True)
 
-# Agregar un mapa interactivo de ventas por país
-st.markdown("## 🌍 Mapa de Ventas")
-fig = px.scatter_geo(filtered_data, locations="Pais", locationmode='country names', color="Total",
-                     hover_name="Pais", size="Total", projection="natural earth", title="Distribución Geográfica de Ventas")
-st.plotly_chart(fig, use_container_width=True)
+# Animación Lottie adicional
+#lottie_url_2 = "https://lottie.host/71c5d4c8-b576-46bc-8581-df7f7064874d/KqOKrrakq2.json"
+#lottie_json_2 = load_lottieurl(lottie_url_2)
 
-# Footer con Copyright
-st.markdown("""
-<style>
-footer {visibility: hidden;}
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown("## Gracias por usar el Dashboard NG")
-
-# Información adicional en el sidebar
-st.sidebar.write("🔢 Información adicional")
-st.sidebar.write("Número de Ventas: ", filtered_data['Total'].count())
-st.sidebar.write("Número de Clientes: ", filtered_data['IdCliente'].nunique())
+#if lottie_json_2:
+    #st_lottie(lottie_json_2, speed=1, width=700, height=300, key="extra_animation")
 
 # Footer con Copyright
 st.markdown("""
